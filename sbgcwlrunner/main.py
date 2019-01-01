@@ -51,8 +51,10 @@ def recursive_workflow_load(wf_fname):
     if is_workflow(doc):
         for n in range(len(doc["steps"])):
             if isinstance(doc["steps"][n]["run"], str):
-                doc["steps"][n]["run"] = recursive_workflow_load(
-                    doc["steps"][n]["run"])
+                step_cwl = doc["steps"][n]["run"]
+                if not step_cwl.startswith("/"):
+                    step_cwl = os.path.join(os.path.dirname(wf_fname), step_cwl)
+                doc["steps"][n]["run"] = recursive_workflow_load(step_cwl)
     return doc
 
 
@@ -172,7 +174,10 @@ def resolve_file(api, full_project_id, file_path, base_path):
     :param base_path:
     :return:
     """
+    # Handle pre-existing IDs in input JSON
     basename = pathlib.PurePath(file_path).name
+    if not pathlib.Path(file_path).exists():
+        return api.files.get(basename)
     fl = list(api.files.query(project=full_project_id, names=[basename]))
     if len(fl) == 1:
         return fl[0]
